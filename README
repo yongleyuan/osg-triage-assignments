@@ -1,0 +1,66 @@
+OSG-Software Google Calendar Triage assignment tool
+
+Usage:
+  $ ./triage.py OPTIONS
+  $ ./triage.py --help
+
+Examples:
+  $ ./triage.py --list
+  $ ./triage.py --list --minDate 2014-03-01 --maxDate 2014-04-20
+  $ ./triage.py --list --calendarId primary
+  $ ./triage.py --assign 2014-07-28 "James Kirk"
+  $ ./triage.py --delete 2014-07-28
+  $ ./triage.py --delete ALL --minDate 2014-07-01 --maxDate 2014-08-01
+  $ ./triage.py --generate "User One" "User Two" "User Three" \ 
+                --minDate 2014-05-01 --maxDate 2014-07-01 > list.txt
+  $ ./triage.py --load list.txt
+  $ ./triage.py --generate Fred Barney Dino \ 
+                --minDate 2014-05-01 --maxDate 2014-07-01 | ./triage --load -
+
+---
+
+Notes:
+
+The first time you run ./triage.py, the script will have to authenticate with
+google -- it will try to open a browser for this, otherwise you can use the
+link it prints out manually.  Once this is done, a file named "calendar.dat"
+will be written, containing authentication data.  After this, you should be
+able to run the script non-interactively, ie, without browser assistance.
+To force re-authentication, just remove "calendar.dat" .
+
+There is also a "client_secrets.json", which google says you should keep
+private, but in this case I think it's only the calendar.dat file that has
+auth data for your google user, and I don't believe it's necessary to keep
+the "client_secret" value in client_secrets.json a secret.  If at some point
+we want to secure it though, project owners can make a new one and project
+members can get it from here:
+
+  https://console.developers.google.com/project/820929912154/apiui/credential
+
+If you want to be added to the project, contact edquist@cs.wisc.edu, who can
+set you up.  As I understand it though, what you really need is not to be a
+member of the project, but to have access to the OSG Software calendar.
+If you need write access to that, contact cat@cs.wisc.edu .
+
+Note also that even without write access to the OSG Software calendar, you
+can use this tool to manage triage assignments on your own personal calendar
+by specifying "--calendarId primary" .
+
+---
+
+Links:
+
+Cloud Console OAuth 2.0 settings for this project:
+
+  https://cloud.google.com/console#/project/820929912154/apiui
+
+Google API Python Client Library documentation:
+ 
+  https://developers.google.com/api-client-library/python/start/get_started
+
+More on Calendar API:
+
+  https://developers.google.com/google-apps/calendar/firstapp
+
+  https://developers.google.com/resources/api-libraries/documentation/calendar/v3/python/latest/
+
