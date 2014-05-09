@@ -28,28 +28,44 @@ import argparse
 import datetime
 import itertools
 import re
+import os.path
 
 from apiclient           import sample_tools
 from oauth2client.client import AccessTokenRefreshError
 
 OSG_CAL_ID = "h5t4mns6omp49db1e4qtqrrf4g@group.calendar.google.com"
+ROTATION_FILE = os.path.join(os.path.dirname(__file__), "rotation.txt")
 
 def argparse_setup():
     ap = argparse.ArgumentParser(add_help=False)
-    ap.add_argument('--calendarId', type=str, default=None, metavar='CALID',
-                    help="google calendar id to use.  Default is OSG Software "
-                         "calendar.  Use 'primary' for current user's "
-                         "calendar, or the google account name (eg, "
-                         "user@gmail.com) for another specific calendar.")
 
-    ap.add_argument('--list', action='store_true', default=False,
-                    help="list current assignments")
-    ap.add_argument('--minDate', type=str, default=None,
-                    help="don't list assignments starting before date "
-                         "(YYYY-MM[-DD])")
-    ap.add_argument('--maxDate', type=str, default=None,
-                    help="don't list assignments starting after date "
-                         "(YYYY-MM[-DD])")
+    ap.add_argument('--calendarId', type=str, default=None, metavar='CALID',
+        help="google calendar id to use.  Default is OSG Software "
+             "calendar.  Use 'primary' for current user's "
+             "calendar, or the google account name (eg, "
+             "user@gmail.com) for another specific calendar.")
+
+    start_mx  = ap.add_mutually_exclusive_group()
+    end_mx    = ap.add_mutually_exclusive_group()
+    action_mx = ap.add_mutually_exclusive_group()
+
+    action_mx.add_argument('--list', action='store_true', default=False,
+        help="list current assignments")
+
+    start_mx.add_argument('--minDate', type=str, default=None, metavar='DATE',
+        help="don't list assignments starting before YYYY-MM[-DD]")
+
+    start_mx.add_argument('--extend', action='store_true', default=False,
+        help="set minDate to start just after the last assignment")
+
+    end_mx.add_argument('--maxDate', type=str, default=None, metavar='DATE',
+        help="don't list assignments starting after YYYY-MM[-DD]")
+
+    end_mx.add_argument('--weeks', type=int, default=None, metavar='N',
+        help="set maxDate to limit to N weeks of assignments")
+
+    end_mx.add_argument('--cycles', type=int, default=None, metavar='N',
+        help="set weeks to N * number of names to generate")
 
 #   mx = ap.add_mutually_exclusive_group()
 #   mx.add_argument('--force', action='store_true', default=False,
@@ -57,18 +73,33 @@ def argparse_setup():
 #   mx.add_argument('--nocheck', action='store_true', default=False,
 #                   help="don't check to see if new assignments"
 #                   " are for the same dates as existing ones")
-    ap.add_argument('--assign', type=str, nargs=2, metavar=('DATE','NAME'),
-                    help="assign name for date")
-    ap.add_argument('--delete', type=str, default=None, metavar='DATE',
-                    help="delete assignment for date, or all assignments in "
-                         "minDate-maxDate range if date is \"ALL\"")
-    ap.add_argument('--load', default=None, type=argparse.FileType('r'),
-                    metavar='FILE', # nargs='+',
-                    help='load "DATE: NAME" lines from file')
-    ap.add_argument('--generate', default=None, type=str,
-                    metavar='NAME', nargs='*',
-                    help='output a list of "DATE: NAME" lines for Mondays in '
-                         'minDate-maxDate range')
+
+    action_mx.add_argument('--assign', type=str, nargs=2,
+        metavar=('DATE','NAME'), help="assign name for date")
+
+    action_mx.add_argument('--delete', type=str, default=None, metavar='DATE',
+        help="delete assignment for date, or all assignments in "
+             "minDate-maxDate range if date is \"ALL\"")
+
+    action_mx.add_argument('--load', default=None, type=argparse.FileType('r'),
+        metavar='FILE', # nargs='+',
+        help='load "DATE: NAME" lines from file')
+
+    action_mx.add_argument('--generate', default=None, type=str,
+        metavar='NAME', nargs='*',
+        help='output a list of "DATE: NAME" lines for Mondays in '
+             'minDate-maxDate range')
+
+    action_mx.add_argument('--generateFrom', default=None,
+        type=argparse.FileType('r'), metavar='FILE',
+        help='like generate, but get list of names from FILE')
+
+    action_mx.add_argument('--generateRotation', action='store_true',
+        default=False, help='same as --generateFrom=rotation.txt')
+
+    action_mx.add_argument('--generateNextRotation', action='store_true',
+        default=False, help='same as --generateRotation --extend --cycles=1')
+
     return ap
 
 def main(argv):
@@ -85,6 +116,49 @@ def main(argv):
     maxDate = check_date(flags.maxDate)
 
     try:
+        # options
+
+        if flags.generateNextRotation:
+            flags.generateRotation = True
+            flags.cycles = 1
+            flags.extend = True
+
+        if flags.generateRotation:
+            flags.generateFrom = open(ROTATION_FILE)
+
+        if flags.generateFrom:
+            flags.generate = [
+                line.strip() for line in flags.generateFrom
+                if  re.search(r'\S', line)      # skip blank lines
+                and re.search(r'^[^#]', line)   # skip comment lines
+            ]
+
+        if flags.cycles is not None:
+            if not flags.generate:
+                fail("For --cycles, must specify one of the generate options "
+                     "with a non-empty list of names.")
+
+            flags.weeks = flags.cycles * len(flags.generate)
+
+        if flags.extend:
+            all_triages = get_triage_assignments(service, calId)
+            if len(all_triages) == 0:
+                fail("No triage assignments found, can't extend.")
+
+            lastdate = s2d(all_triages[-1]['start'])
+            one_week = datetime.timedelta(7)
+            minDate  = d2s(lastdate + one_week)
+
+        if flags.weeks is not None:
+            if not minDate:
+                fail("--weeks requires a minDate")
+
+            one_week = datetime.timedelta(7)
+            maxDate = s2d(minDate) + one_week * (flags.weeks - 1)
+            maxDate = d2s(maxDate)
+
+        # actions
+
         if flags.delete:
             if flags.delete == "ALL":
                 if minDate and maxDate:
@@ -183,7 +257,9 @@ def fail(msg):
     sys.exit(1)
 
 def s2d(s):
-    return datetime.datetime.strptime(s,"%Y-%m-%d")
+    m = re.search(r'^20\d\d-\d+$', s)
+    datefmt = "%Y-%m" if m else "%Y-%m-%d"
+    return datetime.datetime.strptime(s, datefmt)
 
 def d2s(d):
     return d.strftime("%Y-%m-%d")
