@@ -155,7 +155,8 @@ def add_triage_assignment(service, calId, name, start, end):
     event = {
         'summary': "Triage: " + name,
         'start':   {'date': start},
-        'end':     {'date': end}
+        'end':     {'date': end},
+        'transparency': 'transparent'  # ie, show as available
     }
 
     ins = service.events().insert(calendarId=calId, body=event)          
