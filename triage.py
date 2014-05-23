@@ -108,6 +108,10 @@ def main(argv):
         global service
         global flags
 
+    # if first arg is not a flag, interpret as an action
+    if (len(argv) > 1 and not argv[1].startswith("-")):
+        argv[1] = "--" + argv[1]
+
     service,flags = sample_tools.init(argv,'calendar','v3',__doc__,__file__,
                                         parents=[argparse_setup()])
 
@@ -120,8 +124,9 @@ def main(argv):
 
         if flags.generateNextRotation:
             flags.generateRotation = True
-            flags.cycles = 1
             flags.extend = True
+            if flags.cycles is None:
+                flags.cycles = 1
 
         if flags.generateRotation:
             flags.generateFrom = open(ROTATION_FILE)
