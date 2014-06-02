@@ -5,20 +5,25 @@
 OSG-Software Google Calendar Triage assignment tool
 
 Usage:
-  $ ./triage.py OPTIONS
+  $ ./triage.py [ACTION] [OPTIONS]
 
-Examples:
-  $ ./triage.py --list
-  $ ./triage.py --list --minDate 2014-03-01 --maxDate 2014-04-20
-  $ ./triage.py --list --calendarId primary
-  $ ./triage.py --assign 2014-07-28 "James Kirk"
-  $ ./triage.py --delete 2014-07-28
-  $ ./triage.py --delete ALL --minDate 2014-07-01 --maxDate 2014-08-01
-  $ ./triage.py --generate "User One" "User Two" "User Three" \ 
-                --minDate 2014-05-01 --maxDate 2014-07-01 > list.txt
-  $ ./triage.py --load list.txt
-  $ ./triage.py --generate Fred Barney Dino \ 
-                --minDate 2014-05-01 --maxDate 2014-07-01 | ./triage --load -
+  Where ACTION can be one of: list, assign, delete, load, generate,
+  generateFrom, generateRotation, or generateNextRotation.
+
+  An ACTION may also be specified with a leading "--" (eg, --list)
+
+Typical Use:
+  $ ./triage.py list | tail
+  $ ./triage.py generateNextRotation > list.txt
+  $ ./triage.py load list.txt
+
+Other Examples:
+  $ ./triage.py list --calendarId primary  # use personal google calendar
+  $ ./triage.py list --minDate 2014-03-01 --maxDate 2014-04-20
+  $ ./triage.py assign 2014-07-28 "James Kirk"
+  $ ./triage.py delete 2014-07-28
+  $ ./triage.py delete ALL --minDate 2014-07-01 --maxDate 2014-08-01
+  $ ./triage.py generateNextRotation | ./triage load -
 
 
 """
@@ -95,7 +100,7 @@ def argparse_setup():
         help='like generate, but get list of names from FILE')
 
     action_mx.add_argument('--generateRotation', action='store_true',
-        default=False, help='same as --generateFrom=rotation.txt')
+        default=False, help='same as --generateFrom=%s' % ROTATION_FILE)
 
     action_mx.add_argument('--generateNextRotation', action='store_true',
         default=False, help='same as --generateRotation --extend --cycles=1')
@@ -238,7 +243,7 @@ def add_triage_assignment(service, calId, name, start, end):
         'transparency': 'transparent'  # ie, show as available
     }
 
-    ins = service.events().insert(calendarId=calId, body=event)          
+    ins = service.events().insert(calendarId=calId, body=event)
     ret = ins.execute()
     #for x in ['summary','start','end','htmlLink']:
     for x in ['htmlLink']:
