@@ -297,7 +297,7 @@ def delete_triage_assignments(service, calId, minStart, maxStart):
         delete_event(service, calId, item)
 
 def get_triage_assignments(service, calId, minStart=None, maxStart=None):
-    l = service.events().list(calendarId=calId)
+    l = service.events().list(calendarId=calId, q="Triage", maxResults=2500)
     ret = l.execute()
     items = ret['items']
 
