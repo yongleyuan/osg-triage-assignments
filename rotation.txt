@@ -1,5 +1,4 @@
 # triage assignees, one per line
-Tim Cartwright
 Brian Lin
 Carl Edquist
 Edgar Fajardo
