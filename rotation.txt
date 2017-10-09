@@ -1,7 +1,6 @@
 # triage assignees, one per line
 Brian Lin
 Carl Edquist
-Derek Weitzel
 Edgar Fajardo
 Mat Selmeci
 Suchandra Thapa
