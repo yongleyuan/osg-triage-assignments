@@ -3,5 +3,4 @@ Brian Lin
 Carl Edquist
 Edgar Fajardo
 Mat Selmeci
-Suchandra Thapa
 Tim Theisen
