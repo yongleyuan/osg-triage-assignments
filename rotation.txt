@@ -1,7 +1,5 @@
 # triage assignees, one per line
 Brian Lin
 Carl Edquist
-Edgar Fajardo
 Mat Selmeci
 Tim Theisen
-Diego Davila
